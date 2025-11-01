@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import JWTManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import os
@@ -33,13 +33,16 @@ def create_app():
     
     jwt = JWTManager(app)
     
-    # Rate limiting
+    # Rate limiting - CORRECT initialization
     limiter = Limiter(
         get_remote_address,
         app=app,
         default_limits=["200 per day", "50 per hour"],
         storage_uri="memory://",
     )
+    
+    # Store limiter in app context for manual rate limiting
+    app.limiter = limiter
     
     # Register blueprints
     app.register_blueprint(chat_bp, url_prefix='/api')
