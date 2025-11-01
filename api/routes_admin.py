@@ -30,7 +30,7 @@ def get_stats():
         return jsonify(stats)
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}"), 500
 
 @admin_bp.route('/admin/tools/<tool_name>', methods=['POST'])
 @require_admin_secret
