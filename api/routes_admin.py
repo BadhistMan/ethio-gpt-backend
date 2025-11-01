@@ -19,6 +19,9 @@ def require_admin_secret(func):
 @require_admin_secret
 def get_stats():
     try:
+        # Import users_db from auth module
+        from api.routes_auth import users_db
+        
         # Basic stats
         stats = {
             "total_users": len(users_db),
@@ -30,7 +33,7 @@ def get_stats():
         return jsonify(stats)
         
     except Exception as e:
-        return jsonify({"error": str(e)}"), 500
+        return jsonify({"error": str(e)}), 500  # FIXED: Removed extra quote
 
 @admin_bp.route('/admin/tools/<tool_name>', methods=['POST'])
 @require_admin_secret
