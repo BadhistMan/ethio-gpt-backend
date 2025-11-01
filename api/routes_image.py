@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify, send_file
-from flask_limiter import limiter
 import os
 from utils.hf_client import HFClient
 
@@ -7,9 +6,14 @@ image_bp = Blueprint('image', __name__)
 hf_client = HFClient()
 
 @image_bp.route('/image', methods=['POST'])
-@limiter.limit("10 per hour")
 def generate_image():
     try:
+        from flask import current_app
+        # Apply rate limit manually
+        with current_app.app_context():
+            if not current_app.limiter.test_limit(image_bp.name + "image"):
+                return jsonify({"error": "Rate limit exceeded"}), 429
+
         data = request.get_json()
         prompt = data.get('prompt', '').strip()
         preset = data.get('preset', 'realistic')
@@ -27,6 +31,22 @@ def generate_image():
             "url": f"/api/files/{filename}",
             "filename": filename
         })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@image_bp.route('/files/<filename>')
+def get_image(filename):
+    try:
+        # Security: Validate filename to prevent directory traversal
+        if '..' in filename or '/' in filename:
+            return jsonify({"error": "Invalid filename"}), 400
+            
+        filepath = os.path.join('temp', filename)
+        if not os.path.exists(filepath):
+            return jsonify({"error": "Image not found"}), 404
+            
+        return send_file(filepath, mimetype='image/png')
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
