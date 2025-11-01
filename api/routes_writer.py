@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-from flask_limiter import limiter
 from utils.hf_client import HFClient
 import uuid
 import os
@@ -8,9 +7,14 @@ writer_bp = Blueprint('writer', __name__)
 hf_client = HFClient()
 
 @writer_bp.route('/write', methods=['POST'])
-@limiter.limit("20 per hour")
 def generate_content():
     try:
+        from flask import current_app
+        # Apply rate limit manually
+        with current_app.app_context():
+            if not current_app.limiter.test_limit(writer_bp.name + "write"):
+                return jsonify({"error": "Rate limit exceeded"}), 429
+
         data = request.get_json()
         content_type = data.get('type', 'blog')
         topic = data.get('topic', '').strip()
@@ -50,6 +54,12 @@ def generate_content():
 @writer_bp.route('/generate_resume', methods=['POST'])
 def generate_resume():
     try:
+        from flask import current_app
+        # Apply rate limit manually
+        with current_app.app_context():
+            if not current_app.limiter.test_limit(writer_bp.name + "generate_resume"):
+                return jsonify({"error": "Rate limit exceeded"}), 429
+
         data = request.get_json()
         
         # Validate required fields
