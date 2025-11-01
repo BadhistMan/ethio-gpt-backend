@@ -1,14 +1,19 @@
 from flask import Blueprint, request, jsonify
-from flask_limiter import limiter
+import os
 from utils.hf_client import HFClient
 
 tts_bp = Blueprint('tts', __name__)
 hf_client = HFClient()
 
 @tts_bp.route('/tts', methods=['POST'])
-@limiter.limit("30 per hour")
 def text_to_speech():
     try:
+        from flask import current_app
+        # Apply rate limit manually
+        with current_app.app_context():
+            if not current_app.limiter.test_limit(tts_bp.name + "tts"):
+                return jsonify({"error": "Rate limit exceeded"}), 429
+
         data = request.get_json()
         text = data.get('text', '').strip()
         
@@ -30,9 +35,14 @@ def text_to_speech():
         return jsonify({"error": str(e)}), 500
 
 @tts_bp.route('/stt', methods=['POST'])
-@limiter.limit("30 per hour")
 def speech_to_text():
     try:
+        from flask import current_app
+        # Apply rate limit manually
+        with current_app.app_context():
+            if not current_app.limiter.test_limit(tts_bp.name + "stt"):
+                return jsonify({"error": "Rate limit exceeded"}), 429
+
         if 'audio' not in request.files:
             return jsonify({"error": "Audio file is required"}), 400
         
@@ -45,6 +55,21 @@ def speech_to_text():
         text = hf_client.speech_to_text(audio_data)
         
         return jsonify({"text": text})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@tts_bp.route('/files/<filename>')
+def get_tts(filename):
+    try:
+        if '..' in filename or '/' in filename:
+            return jsonify({"error": "Invalid filename"}), 400
+            
+        filepath = os.path.join('temp', filename)
+        if not os.path.exists(filepath):
+            return jsonify({"error": "Audio file not found"}), 404
+            
+        return send_file(filepath, mimetype='audio/wav')
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
