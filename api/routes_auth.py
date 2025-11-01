@@ -69,7 +69,7 @@ def login():
             "access_token": access_token,
             "user": {
                 "id": user['id'],
-                "username': user['username'],
+                "username": user['username'],  # FIXED: Was "username' with single quote
                 "display_name": user['display_name']
             }
         })
