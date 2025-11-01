@@ -1,14 +1,18 @@
 from flask import Blueprint, request, jsonify
-from flask_limiter import limiter
 from utils.hf_client import HFClient
 
 translator_bp = Blueprint('translator', __name__)
 hf_client = HFClient()
 
 @translator_bp.route('/translate', methods=['POST'])
-@limiter.limit("50 per hour")
 def translate_text():
     try:
+        from flask import current_app
+        # Apply rate limit manually
+        with current_app.app_context():
+            if not current_app.limiter.test_limit(translator_bp.name + "translate"):
+                return jsonify({"error": "Rate limit exceeded"}), 429
+
         data = request.get_json()
         text = data.get('text', '').strip()
         target_lang = data.get('target_lang', 'en')
